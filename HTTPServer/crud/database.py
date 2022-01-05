@@ -8,11 +8,10 @@ import os
 from dotenv import load_dotenv
 from mysql.connector import connect, Error
 
+load_dotenv(os.path.join(os.path.dirname(__file__), 'data/environment.env'))
 DATABASE = "File_Storage"
 
 HOST = "localhost"
-
-load_dotenv('../environment.env')
 
 
 class Connection:
@@ -34,8 +33,7 @@ class Connection:
             Connection.my_db = connect(
                     host=HOST,
                     user=os.environ.get('secretUser'),
-                    password=os.environ.get('secretKey'),
-                    database=DATABASE,
+                    password=os.environ.get('secretKey')
             )
         except Error as db_error:
             print('error'+str(db_error))
@@ -51,15 +49,21 @@ class Connection:
 
         Note: filename will be treated as TABLE_NAME
         """
-        with open(name, 'r', encoding="utf-8") as file:
+        # os.path.join(os.path.dirname(__file__),
+        with open(os.path.join(os.path.dirname(__file__), f'data/{name}'), 'r',
+                  encoding="utf-8") as file:
             table_name = "_".join(name.split('.'))
             Connection.table_name = table_name
             reader = csv.reader(file)
             statement = Connection.create_statement(reader)
             cursor = Connection.my_db.cursor()
-            cursor.execute('DROP TABLE IF EXISTS ' + table_name + ';')
+            cursor.execute(f"SHOW databases LIKE '{DATABASE}'")
+            if cursor.fetchone() is None:
+                cursor.execute(f"create Database {DATABASE}")
+            cursor.execute(f'DROP TABLE IF EXISTS {DATABASE}.{table_name };')
             cursor.execute(statement)
-        with open(name, 'r', encoding="utf-8") as file:
+        with open(os.path.join(os.path.dirname(__file__), f'data/{name}'), 'r',
+                  encoding="utf-8") as file:
             reader = csv.reader(file)
             Connection.insert_statement(reader)
             Connection.my_db.commit()
@@ -114,7 +118,7 @@ class Connection:
         longest, columns, type_list = [], [], []
         Connection.table_columns = columns = Connection.load_metadata(columns, longest,
                                                                       reader, type_list)
-        create_query = 'create table ' + Connection.table_name + '('
+        create_query = f'create table {DATABASE}.{Connection.table_name}('
         for i in range(len(columns)):
             create_query = (create_query + f'\n{columns[i].lower()} {type_list[i]}({longest[i]}),')
         create_query = create_query[:-1] + f',\nPRIMARY KEY ({columns[0]}, {columns[1]}));'
@@ -189,9 +193,9 @@ class Connection:
         cursor = Connection.my_db.cursor()
         data = []
         if record_id is None:
-            cursor.execute('SELECT * FROM '+Connection.table_name)
+            cursor.execute(f'SELECT * FROM {DATABASE}.{Connection.table_name}')
         else:
-            cursor.execute(f"SELECT * FROM {Connection.table_name} WHERE id = '{record_id}'")
+            cursor.execute(f"SELECT * FROM {DATABASE}.{Connection.table_name} WHERE id = '{record_id}'")
         data.append(Connection.table_columns)
         data.append(cursor.fetchall())
         return data
@@ -239,14 +243,34 @@ class Connection:
         :return: table data and msg
         """
         cursor = Connection.my_db.cursor()
-        cursor.execute(f"SELECT EXISTS(SELECT * from {Connection.table_name} "
+        cursor.execute(f"SELECT EXISTS(SELECT * from {DATABASE}.{Connection.table_name} "
                        f"WHERE id = '{record_id}')")
         result = cursor.fetchone()
         if result[0] != 1:
             msg = f"Record with id = {record_id} does not exist"
         else:
-            cursor.execute(f"DELETE from {Connection.table_name} WHERE id='{record_id}'")
+            cursor.execute(f"DELETE from {DATABASE}.{Connection.table_name} WHERE id='{record_id}'")
             msg = 'Record Deleted Successfully'
         data = Connection.select_statement()
         Connection.my_db.commit()
         return data, msg
+
+
+class Credentials:
+
+    def __init__(self, username, password):
+        self.__username = username
+        self.__password = password
+
+    def set(self):
+        with open(os.path.join(os.path.dirname(__file__), 'data/environment.env'), "w") as file:
+            file.write('secretUser='+self.__username+'\nsecretKey='+self.__password)
+        load_dotenv(os.path.join(os.path.dirname(__file__), 'data/environment.env'))
+
+
+if __name__ == '__main__':
+    obj = Connection()
+    obj.connect()
+    curso = obj.my_db.cursor()
+    curso.execute("SHOW databases LIKE 'file_storage'")
+    print(curso.fetchone())
