@@ -63,3 +63,6 @@ obj.test_08_add_invalid_row_in_db()
 Create the above test_package.py file and run the program.
 It should run without any error and all test cases will pass
 for CRUD application testing.
+
+## License
+[MIT](https://choosealicense.com/licenses/mit/)
