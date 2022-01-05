@@ -2,14 +2,15 @@
 This scripts has unit tests for CRUD application
 @Author - Mohammad Toseef
 """
+import os.path
 import unittest
 from io import BytesIO
 
 from mysql.connector.errors import IntegrityError, DatabaseError
 
-from database import Connection
-from app import app
-from app import connection as con_obj
+from .database import Connection, DATABASE
+from .app import app
+from .app import connection as con_obj
 
 UPDATE_ID = 'algorand'
 
@@ -78,11 +79,14 @@ class FlaskTest(unittest.TestCase):
         posts the file row_data to server and checks the view if File uploaded Successfully
         :return: None
         """
-        with open('Crypto2.csv', 'rb') as file:
+        with open(os.path.join(os.path.dirname(__file__), 'data/Crypto2.csv'),
+                  'rb') as file:
             data = {
                 'field': 'value',
                 'filename': (BytesIO(file.read()), self.filename)
             }
+            # cred_obj = Credentials('root', 'pass')
+            # cred_obj.set()
             response = self.tester.post('/upload_file', buffered=True, data=data,
                                         content_type='multipart/form-data',
                                         follow_redirects=True)
@@ -147,7 +151,7 @@ class FlaskTest(unittest.TestCase):
         make a call to database to check if record is updated in the table
         """
         cursor = con_obj.my_db.cursor()
-        cursor.execute(f"SELECT * FROM {self.table_name} WHERE id= '{self.record_to_update['id']}'")
+        cursor.execute(f"SELECT * FROM {DATABASE}.{self.table_name} WHERE id= '{self.record_to_update['id']}'")
         record = cursor.fetchone()
         record_list = []
         record_list.insert(0, list(map(str, record)))
@@ -159,7 +163,8 @@ class FlaskTest(unittest.TestCase):
         """
         delete_id = 'bitcoin'
         cursor = con_obj.my_db.cursor()
-        cursor.execute(f"SELECT EXISTS(SELECT * from {self.table_name} WHERE id = '{delete_id}')")
+        cursor.execute(f"SELECT EXISTS(SELECT * from {DATABASE}.{self.table_name} WHERE id = '"
+                       f"{delete_id}')")
         result = cursor.fetchone()
         self.assertEqual(result[0], 0)
 
