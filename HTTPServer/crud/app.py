@@ -1,12 +1,15 @@
+"""
+CRUD Application using FLASK framework .
+Author - Mohammad Toseef
+"""
 from flask import Flask, render_template
 from flask import request, flash
-from Database import Connection
-from mysql.connector import DataError
+from database import Connection
 
 app = Flask(__name__)
 app.secret_key = "flash message"
-table_name = ''
-file_name = ''
+TABLE_NAME = ''
+FILE_NAME = ''
 connection = Connection()
 connection.connect()
 
@@ -16,6 +19,7 @@ def index():
     """
     :return: output the homepage while server is running
     """
+
     return render_template("home.html")
 
 
@@ -25,11 +29,10 @@ def upload_file():
     Uploads file to the database
     :return: Success page
     """
-    global table_name, file_name
     file = request.files['filename']
-    file_name = file.filename
+    app.FILE_NAME = file.filename
     file.save(file.filename)
-    table_name = "_".join(file.filename.split('.'))
+    app.TABLE_NAME = "_".join(file.filename.split('.'))
     connection.upload_file(file.filename)
     data = Connection.select_statement()
     return render_template("Success.html", data=data, msg='File uploaded Successfully')
@@ -37,6 +40,11 @@ def upload_file():
 
 @app.route("/add", methods=['POST', 'GET'])
 def add():
+    """
+    renders add.html on Get request ,
+    renders Success.html when row_data has been added on post request
+    renders add.html with error message when row_data is not proper
+    """
     columns = connection.table_columns
     if request.method == 'POST':
         message = connection.add_row(request.form.to_dict())
@@ -50,42 +58,31 @@ def add():
 
 @app.route('/update/<record_id>', methods=['POST', 'GET'])
 def update(record_id):
-    # connection.connect()
+    """
+    GET request : renders edit page
+    POST request : makes record update request to database and renders Success.html
+
+    :param record_id: unique id of the record to be updated
+    :return: GET - edit.html / POST - Success.html
+
+    """
     if request.method == 'POST':
         Connection.update(request.form.to_dict(), record_id)
-        # cursor = connection.my_db.cursor()
-        # cursor.execute(query)
-        # connection.my_db.commit()
         data = connection.select_statement()
-
         return render_template("Success.html", data=data, msg='Record Updated Successfully')
-    cursor = connection.my_db.cursor()
-    cursor.execute('select database();')
-    database = cursor.fetchone()
-    cursor.execute('SHOW COLUMNS FROM ' + database[0] + '.' + table_name)
-    data = cursor.fetchall()
-    headers = []
-    for row in data:
-        headers.append(row[0])
-    data = []
-    cursor.execute('SELECT * FROM '+table_name+' WHERE id=\''+record_id+'\'')
-    data.append(cursor.fetchone())
-    return render_template("edit.html", data=data, headers=headers)
+    data = connection.select_statement(record_id)
+    return render_template("edit.html", data=data[1], headers=Connection.table_columns)
 
 
 @app.route('/delete/<record_id>')
 def delete(record_id):
-    connection.connect()
-    cursor = connection.my_db.cursor()
-    cursor.execute('SELECT EXISTS(SELECT * from {0} WHERE id = \'{1}\')'.format(table_name,
-                                                                                record_id))
-    result = cursor.fetchone()
-    if result[0] != 1:
-        raise DataError
-    cursor.execute('DELETE from '+table_name+' WHERE id=\''+record_id+'\'')
-    data = Connection.select_statement()
-    connection.my_db.commit()
-    return render_template("Success.html", data=data, msg='Record Deleted Successfully')
+    """
+    deletes record for the given id from DB
+    :param record_id: id that recognize the row uniquely
+    :return: renders Success.html
+    """
+    data, msg = connection.delete_row(record_id)
+    return render_template("Success.html", data=data, msg=msg)
 
 
 app.debug = True

@@ -1,8 +1,12 @@
-from mysql.connector import connect, Error
-import csv
+"""
+This script connects to MY SQL database and performs CRUD Operations
+"""
 import ast
+import csv
 import os
+
 from dotenv import load_dotenv
+from mysql.connector import connect, Error
 
 DATABASE = "File_Storage"
 
@@ -12,14 +16,18 @@ load_dotenv('../environment.env')
 
 
 class Connection:
+    """
+    implements Create read update and delete functions
+    """
     my_db = None
     table_name = ''
     table_columns = []
+    data_type_list = []
 
     @staticmethod
     def connect():
         """
-        make a mysql database connection and store it inside my_db class variable
+        makes a mysql database connection and store it inside my_db class variable
         :return: None
         """
         try:
@@ -29,33 +37,32 @@ class Connection:
                     password=os.environ.get('secretKey'),
                     database=DATABASE,
             )
-        except Error as e:
-            print('error'+str(e))
+        except Error as db_error:
+            print('error'+str(db_error))
 
     @staticmethod
     def upload_file(name):
         """
-        Create a new table with given filename and insert the file content
+        Creates a new table in DB with given filename and insert the file content
         to that table
 
         :param name: Filename that has to be uploaded
         :return: None
 
-        Note: filename will be treated as table_name
+        Note: filename will be treated as TABLE_NAME
         """
-        with open(name, 'r') as file:
-            filename = "_".join(name.split('.'))
-            Connection.table_name = filename
+        with open(name, 'r', encoding="utf-8") as file:
+            table_name = "_".join(name.split('.'))
+            Connection.table_name = table_name
             reader = csv.reader(file)
-            statement = Connection.create_statement(filename, reader)
+            statement = Connection.create_statement(reader)
             cursor = Connection.my_db.cursor()
-            cursor.execute('DROP TABLE IF EXISTS ' + filename + ';')
+            cursor.execute('DROP TABLE IF EXISTS ' + table_name + ';')
             cursor.execute(statement)
-        with open(name, 'r') as file:
+        with open(name, 'r', encoding="utf-8") as file:
             reader = csv.reader(file)
             Connection.insert_statement(reader)
             Connection.my_db.commit()
-            # Connection.load_columns()
 
     @staticmethod
     def load_columns():
@@ -70,58 +77,53 @@ class Connection:
             Connection.table_columns.append(column[0])
 
     @staticmethod
-    def datatype(val, current_type):
+    def datatype(value, current_type):
         """
         determines the type of the given value
-        :param val: any number or string
+        :param value: any number or string
         :param current_type: current_data_type of the value
-        :return: sql data type
+        :return: sql row_data type
         """
         try:
             # Evaluates numbers to an appropriate type, and strings an error
-            t = ast.literal_eval(val)
+            type_evaluated = ast.literal_eval(value)
         except ValueError:
             return 'varchar'
         except SyntaxError:
             return 'varchar'
-        if type(t) in [int, float]:
-            if (type(t) in [int]) and current_type not in ['float', 'varchar']:
+        if any([isinstance(type_evaluated, float), isinstance(type_evaluated, float)]):
+            if (isinstance(type_evaluated, int)) and current_type not in ['float', 'varchar']:
                 # Use smallest possible int type
-                if (-32768 < t < 32767) and current_type not in ['int', 'bigint']:
+                if (-32768 < type_evaluated < 32767) and current_type not in ['int', 'bigint']:
                     return 'smallint'
-                elif (-2147483648 < t < 2147483647) and current_type not in ['bigint']:
+                if (-2147483648 < type_evaluated < 2147483647) and current_type not in ['bigint']:
                     return 'int'
-                else:
-                    return 'bigint'
-            if type(t) is float and current_type not in ['varchar']:
+                return 'bigint'
+            if isinstance(type_evaluated, float) and current_type not in ['varchar']:
                 return 'decimal'
         else:
             return 'varchar'
 
     @staticmethod
-    def create_statement(filename, reader):
+    def create_statement(reader):
+        """
+        reads the file column names and returns the create table query
+        :param reader: csv file reader object
+        :return: create table query
+        """
         longest, columns, type_list = [], [], []
-        Connection.table_columns = columns = Connection.load_metadata(columns, longest, reader, type_list)
-        statement = 'create table ' + filename + '('
-
+        Connection.table_columns = columns = Connection.load_metadata(columns, longest,
+                                                                      reader, type_list)
+        create_query = 'create table ' + Connection.table_name + '('
         for i in range(len(columns)):
-            if i == 0 or i == 1:
-                key = 'PRIMARY KEY' if i == 0 else 'UNIQUE'
-                statement = (statement + '\n{} {}({})  ' + key + ',').format(columns[i].lower(),
-                                                                             type_list[i], str(longest[i]))
-#            elif type_list[i] == 'varchar':
-#                statement = (statement + '\n{} varchar({}),').format(columns[i].lower(), str(longest[i]))
-            else:
-                statement = (statement + '\n' + '{} {}({})' + ',').format(columns[i].lower(), type_list[i],
-                                                                          str(longest[i]))
-
-        statement = statement[:-1] + ');'
-        return statement
+            create_query = (create_query + f'\n{columns[i].lower()} {type_list[i]}({longest[i]}),')
+        create_query = create_query[:-1] + f',\nPRIMARY KEY ({columns[0]}, {columns[1]}));'
+        return create_query
 
     @staticmethod
     def load_metadata(columns, longest, reader, type_list):
         """
-        extracts column names from file content ,determines the data type of each column
+        extracts column names from file content ,determines the row_data type of each column
         and max length required for each column field
 
         :param columns: a list to store column names
@@ -149,6 +151,7 @@ class Connection:
                         type_list[i] = var_type
                     if len(row[i]) > longest[i]:
                         longest[i] = len(row[i])
+        Connection.data_type_list = type_list
         return columns
 
     @staticmethod
@@ -156,7 +159,7 @@ class Connection:
         """
         reads the file content and returns the corresponding insert statement
         :param reader: csv file reader
-        :return:
+        :return: None
         """
         i = 0
         cursor = Connection.my_db.cursor()
@@ -165,22 +168,30 @@ class Connection:
                 pass
             else:
                 insert_query = 'INSERT INTO ' + DATABASE + '.' + Connection.table_name + ' values ('
+                j = 0
                 for cell in row:
-                    insert_query += '\'' + cell + '\','
+                    if Connection.data_type_list[j] == 'varchar':
+                        insert_query += f"'{cell}',"
+                    else:
+                        insert_query += f"{cell},"
+                    j += 1
                 insert_query = insert_query[:-1] + ')'
                 cursor.execute(insert_query)
             i += 1
         Connection.my_db.commit()
 
     @staticmethod
-    def select_statement():
+    def select_statement(record_id=None):
         """
         fetches the rows from the table
         :return: list of rows
         """
         cursor = Connection.my_db.cursor()
         data = []
-        cursor.execute('SELECT * FROM '+Connection.table_name)
+        if record_id is None:
+            cursor.execute('SELECT * FROM '+Connection.table_name)
+        else:
+            cursor.execute(f"SELECT * FROM {Connection.table_name} WHERE id = '{record_id}'")
         data.append(Connection.table_columns)
         data.append(cursor.fetchall())
         return data
@@ -188,12 +199,13 @@ class Connection:
     @staticmethod
     def update(data, record_id):
         """
-        :param data: row data to be updated
+        takes row row_data , id and updates the row in the database
+        :param data: row row_data to be updated
         :param record_id: id of the record
         :return: None
         """
         cursor = Connection.my_db.cursor()
-        update_stat = 'UPDATE '+Connection.table_name+' SET '
+        update_stat = f'UPDATE {DATABASE}.{Connection.table_name} SET '
         statement = ''
         for key, value in data.items():
             statement += str(key) + ' = \'' + str(value) + '\' ,'
@@ -202,22 +214,39 @@ class Connection:
         Connection.my_db.commit()
 
     @staticmethod
-    def add_row(data):
+    def add_row(row_data):
         """
         adds a new row to table
-        :param data: row to be updated
+        :param row_data: row data to be updated
         :return: None
         """
         cursor = Connection.my_db.cursor()
-        for key in list(data.keys())[:2]:
-            value = data[key]
-            cursor.execute('SELECT * FROM ' + Connection.table_name + ' WHERE '
-                           + str(key) + ' = \'' + str(value) + '\'')
-            if cursor.fetchone():
-                return 'The value entered in \'' + key + ' field \' already exist !'
-        add_stat = 'INSERT INTO ' + DATABASE + '.' + Connection.table_name + ' values('
-        for value in data.values():
-            add_stat = (add_stat + '\'' + str(value) + '\',')
-        add_stat = add_stat[:-1] + ')'
-        cursor.execute(add_stat)
+        insert_query = f'INSERT INTO {DATABASE}.{Connection.table_name} values('
+        i = 0
+        for value in row_data.values():
+            if Connection.data_type_list[i] == 'varchar':
+                insert_query = (insert_query + f"'{value}',")
+            else:
+                insert_query = (insert_query + f"{value},")
+        insert_query = insert_query[:-1] + ')'
+        cursor.execute(insert_query)
         Connection.my_db.commit()
+
+    @staticmethod
+    def delete_row(record_id):
+        """
+        :param record_id: unique id of the record to be deleted
+        :return: table data and msg
+        """
+        cursor = Connection.my_db.cursor()
+        cursor.execute(f"SELECT EXISTS(SELECT * from {Connection.table_name} "
+                       f"WHERE id = '{record_id}')")
+        result = cursor.fetchone()
+        if result[0] != 1:
+            msg = f"Record with id = {record_id} does not exist"
+        else:
+            cursor.execute(f"DELETE from {Connection.table_name} WHERE id='{record_id}'")
+            msg = 'Record Deleted Successfully'
+        data = Connection.select_statement()
+        Connection.my_db.commit()
+        return data, msg
