@@ -2,9 +2,12 @@
 CRUD Application using FLASK framework .
 Author - Mohammad Toseef
 """
+import os
+
 from flask import Flask, render_template
 from flask import request, flash
-from database import Connection
+
+from .database import Connection
 
 app = Flask(__name__)
 app.secret_key = "flash message"
@@ -31,7 +34,7 @@ def upload_file():
     """
     file = request.files['filename']
     app.FILE_NAME = file.filename
-    file.save(file.filename)
+    file.save(os.path.join(os.path.dirname(__file__), f'data\\{file.filename}'))
     app.TABLE_NAME = "_".join(file.filename.split('.'))
     connection.upload_file(file.filename)
     data = Connection.select_statement()
