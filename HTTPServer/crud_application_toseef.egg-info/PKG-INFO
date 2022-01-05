@@ -1,0 +1,67 @@
+Metadata-Version: 2.1
+Name: crud-application-toseef
+Version: 0.0.6
+Summary: CRUD Application to upload csv file and perform CRUD Operations
+Home-page: https://github.com/pypa/sampleproject
+Author: Mohammad Toseef
+Author-email: mohammad@codeops.tech
+License: UNKNOWN
+Project-URL: Bug Tracker, https://github.com/pypa/sampleproject/issues
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+CRUD Application Testing package 
+
+In order to test this program , Please create
+a database named 'file_storage' 
+This boundation will be removed in coming versions
+
+#Installation
+```buildoutcfg
+pip install -i https://test.pypi.org/simple/ crud-application-toseef==0.0.5
+```
+#Setting username and password for SQL 
+Set_cred.py
+```python
+
+from crud.database import Credentials
+
+username = ""
+password = ""
+cred_obj = Credentials(username=username, password=password)
+cred_obj.set()
+
+
+```
+
+#Usage
+test_package.py
+```python
+from crud import test_app
+
+obj = test_app.FlaskTest()
+obj.setUpClass()
+obj.setUp()
+obj.test_01_home_page_renders_successfully()
+obj.test_02_file_upload_successful()
+obj.test_03_add_view_rendered_successfully()
+obj.test_04_record_added_successfully()
+obj.test_05_edit_view_rendered_successfully()
+obj.test_06_record_updated_successfully()
+obj.test_07_record_deleted_successfully()
+obj.test_09_check_updated_record_in_db()
+obj.test_10_record_deleted_in_db()
+obj.test_11_add_duplicate_record_in_db()
+obj.test_12_update_duplicate_data_in_db()
+obj.test_13_delete_invalid_data_in_db()
+obj.test_14_wrong_url()
+obj.test_08_add_invalid_row_in_db()
+
+```
+
+
