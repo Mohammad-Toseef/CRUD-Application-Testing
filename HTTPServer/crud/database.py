@@ -265,9 +265,9 @@ class Credentials:
         self.__password = password
 
     def set(self):
-        with open(os.path.join(os.path.dirname(__file__), 'data/environment.env'), "w") as file:
+        with open(os.path.join(os.path.dirname(__file__), f'data{os.sep}environment.env'), "w") as file:
             file.write('secretUser='+self.__username+'\nsecretKey='+self.__password)
-        load_dotenv(os.path.join(os.path.dirname(__file__), 'data/environment.env'))
+        load_dotenv(os.path.join(os.path.dirname(__file__), f'data{os.sep}environment.env'))
 
 
 if __name__ == '__main__':
