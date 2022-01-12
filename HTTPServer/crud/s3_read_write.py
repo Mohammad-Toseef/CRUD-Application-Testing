@@ -11,16 +11,20 @@ class S3Operations:
         self.s3_client = boto3.client('s3')
         self.files = []
 
-    def read_s3object(self):
-        self.list_s3_object()
-        file_path = self.files[int(input('Enter the number to read file : '))-1]
+    def read_s3object(self, file_path):
         obj = self.s3_client.get_object(
             Bucket=self.bucket,
             Key=file_path
         )
-        with open(file_path.split('/')[1], 'wb') as file_obj:
-            file_obj.write(obj['Body'].read())
-        print(f"{file_path.split('/')[1]} has been downloaded")
+        if file_path is None:
+            self.list_s3_object()
+            file_path = self.files[int(input('Enter the number to read file : '))-1]
+            with open(file_path.split('/')[1], 'wb') as file_obj:
+                file_obj.write(obj['Body'].read())
+        else:
+            with open(os.path.join(os.path.dirname(__file__), file_path), 'wb') as file_obj:
+                file_obj.write(obj['Body'].read())
+        print(f"{file_path} has been downloaded")
 
     def write_s3object(self, file_path, local_filename):
         with open(os.path.join(os.path.dirname(__file__), local_filename)) as file:
