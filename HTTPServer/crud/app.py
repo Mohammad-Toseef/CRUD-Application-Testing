@@ -3,16 +3,17 @@ CRUD Application using FLASK framework .
 Author - Mohammad Toseef
 """
 import os
+import pandas as pd
 
+from s3_read_write import S3Operations
 from flask import Flask, render_template
 from flask import request, flash
 
-from .database import Connection
+from database import Connection
 
 app = Flask(__name__)
 app.secret_key = "flash message"
 TABLE_NAME = ''
-FILE_NAME = ''
 connection = Connection()
 connection.connect()
 
@@ -33,8 +34,9 @@ def upload_file():
     :return: Success page
     """
     file = request.files['filename']
-    app.FILE_NAME = file.filename
-    file.save(os.path.join(os.path.dirname(__file__), f'data\\{file.filename}'))
+    print(request.data)
+    connection.file_name = file.filename
+    file.save(os.path.join(os.path.dirname(__file__), file.filename))
     app.TABLE_NAME = "_".join(file.filename.split('.'))
     connection.upload_file(file.filename)
     data = Connection.select_statement()
@@ -86,6 +88,29 @@ def delete(record_id):
     """
     data, msg = connection.delete_row(record_id)
     return render_template("Success.html", data=data, msg=msg)
+
+
+@app.route('/backup')
+def backup():
+    query_result = pd.read_sql_query(f"SELECT * FROM {Connection.database}.{Connection.table_name}", Connection.my_db)
+    df = pd.DataFrame(query_result)
+    print(f"file name is {connection.file_name}")
+    df.to_csv(os.path.join(os.path.dirname(__file__), connection.file_name), index=False)
+    bucket_name = 'first-ui-bucket'
+    s3_obj = S3Operations(bucket_name)
+    s3_obj.write_s3object(connection.file_name, connection.file_name)
+    data = Connection.select_statement()
+    return render_template("Success.html", data=data, msg=f"Backup Successfull to Bucket : {bucket_name}")
+
+
+@app.route('/restore')
+def restore():
+    bucket_name = 'first-ui-bucket'
+    s3_obj = S3Operations(bucket_name)
+    s3_obj.read_s3object(connection.file_name)
+    connection.upload_file(connection.file_name)
+    data = Connection.select_statement()
+    return render_template("Success.html", data=data, msg='Restored From Bucket Successfully')
 
 
 app.debug = True
