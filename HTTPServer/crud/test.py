@@ -8,9 +8,9 @@ html_content = u"""
     <meta charset="utf-8">
     <style>
     body {
-        font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji",
-            Times, Symbola, Aegyptus, Code2000, Code2001, Code2002, Musica, serif,
-            LastResort, 'Ubuntu', sans-serif;
+        font-family: "Times New Roman", "Apple Color Emoji", "Segoe UI Emoji",
+                    Times, Symbola, Aegyptus, Code2000, Code2001, Code2002, Musica, serif,
+                                LastResort, 'Ubuntu', sans-serif;
         }
 </style>
 </head>
