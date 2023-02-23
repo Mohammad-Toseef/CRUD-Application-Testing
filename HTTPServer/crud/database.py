@@ -13,7 +13,6 @@ load_dotenv(os.path.join(os.path.dirname(__file__), 'data/environment.env'))
 
 HOST = "localhost"
 
-
 class Connection:
     """
     implements Create read update and delete functions
@@ -36,6 +35,8 @@ class Connection:
                     host=HOST,
                     user=os.environ.get('secretUser'),
                     password=os.environ.get('secretKey')
+                    # user='local',
+                    # password='local'
             )
         except Error as db_error:
             print('error'+str(db_error))
@@ -168,6 +169,7 @@ class Connection:
         :return: None
         """
         i = 0
+        result = ''
         cursor = Connection.my_db.cursor()
         for row in reader:
             if i == 0:
@@ -181,10 +183,12 @@ class Connection:
                     else:
                         insert_query += f"{cell},"
                     j += 1
-                insert_query = insert_query[:-1] + ')'
-                cursor.execute(insert_query)
+                insert_query = insert_query[:-1] + ');'
+                result = result + insert_query
+        #         cursor.execute(insert_query)
             i += 1
-        Connection.my_db.commit()
+        # Connection.my_db.commit()
+        return result
 
     @staticmethod
     def select_statement(record_id=None):
@@ -234,9 +238,10 @@ class Connection:
                 insert_query = (insert_query + f"'{value}',")
             else:
                 insert_query = (insert_query + f"{value},")
-        insert_query = insert_query[:-1] + ')'
-        cursor.execute(insert_query)
-        Connection.my_db.commit()
+        insert_query = insert_query[:-1] + ');'
+        return insert_query
+        # cursor.execute(insert_query)
+        # Connection.my_db.commit()
 
     @staticmethod
     def delete_row(record_id):

@@ -3,15 +3,15 @@ This scripts has unit tests for CRUD application
 @Author - Mohammad Toseef
 """
 import os.path
+import sys
 import unittest
 from io import BytesIO
-
+from flask import request
 from mysql.connector.errors import IntegrityError, DatabaseError
 
-from .database import Connection, DATABASE
+from .database import Connection
 from .app import app
 from .app import connection as con_obj
-
 UPDATE_ID = 'algorand'
 
 
@@ -151,7 +151,7 @@ class FlaskTest(unittest.TestCase):
         make a call to database to check if record is updated in the table
         """
         cursor = con_obj.my_db.cursor()
-        cursor.execute(f"SELECT * FROM {DATABASE}.{self.table_name} WHERE id= '{self.record_to_update['id']}'")
+        cursor.execute(f"SELECT * FROM {Connection.database}.{self.table_name} WHERE id= '{self.record_to_update['id']}'")
         record = cursor.fetchone()
         record_list = []
         record_list.insert(0, list(map(str, record)))
@@ -163,7 +163,7 @@ class FlaskTest(unittest.TestCase):
         """
         delete_id = 'bitcoin'
         cursor = con_obj.my_db.cursor()
-        cursor.execute(f"SELECT EXISTS(SELECT * from {DATABASE}.{self.table_name} WHERE id = '"
+        cursor.execute(f"SELECT EXISTS(SELECT * from {Connection.database}.{self.table_name} WHERE id = '"
                        f"{delete_id}')")
         result = cursor.fetchone()
         self.assertEqual(result[0], 0)

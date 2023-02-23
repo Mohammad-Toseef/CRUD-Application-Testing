@@ -35,8 +35,10 @@ cred_obj.set()
 run this script once and it will set the provided
 username and password to the environment file
 ***
+
 #Usage
 test_package.py
+
 ```python
 from crud import test_app
 
